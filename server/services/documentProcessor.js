@@ -51,13 +51,19 @@ const extractDataFromFile = async (file) => {
 };
 
 const extractFromPDF = async (file) => {
+  // Use the buffer directly from the uploaded file
   const dataBuffer = file.buffer;
-  const data = await pdf(dataBuffer);
-  return {
-    text: data.text,
-    info: data.info,
-    metadata: data.metadata
-  };
+  
+  try {
+    const data = await pdf(dataBuffer);
+    return {
+      text: data.text,
+      info: data.info,
+      metadata: data.metadata
+    };
+  } catch (error) {
+    throw new Error(`Failed to process PDF: ${error.message}`);
+  }
 };
 
 const extractFromExcel = async (file) => {
