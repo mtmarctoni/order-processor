@@ -1,6 +1,6 @@
 import { templateService } from '../lib/supabase.js';
-import { ChatOpenAI } from 'langchain/chat_models';
-import { HumanMessage, SystemMessage } from 'langchain/schema';
+import { ChatOpenAI } from '@langchain/openai';
+import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { createWorker } from 'tesseract.js';
 import pdf from 'pdf-parse';
 import xlsx from 'xlsx';
@@ -9,9 +9,8 @@ import xlsx from 'xlsx';
 const chatModel = new ChatOpenAI({
   temperature: 0.2,
   modelName: 'gpt-4',
-  openAIApiKey: process.env.OPENAI_API_KEY // Add this line
+  openAIApiKey: process.env.OPENAI_API_KEY
 });
-
 
 export const analyzeTemplate = async (file) => {
   try {
@@ -132,7 +131,7 @@ Provide analysis in JSON format with the following structure:
   }
 }`);
 
-  const response = await chatModel.call([systemPrompt, userPrompt]);
+  const response = await chatModel.invoke([systemPrompt, userPrompt]);
   return JSON.parse(response.content);
 };
 
@@ -151,7 +150,7 @@ Generate detailed field processing rules including:
 
 Provide output in JSON format.`);
 
-  const response = await chatModel.call([systemPrompt, userPrompt]);
+  const response = await chatModel.invoke([systemPrompt, userPrompt]);
   return JSON.parse(response.content);
 };
 
@@ -173,6 +172,6 @@ Validate and provide:
 
 Provide output in JSON format.`);
 
-  const response = await chatModel.call([systemPrompt, userPrompt]);
+  const response = await chatModel.invoke([systemPrompt, userPrompt]);
   return JSON.parse(response.content);
 };
