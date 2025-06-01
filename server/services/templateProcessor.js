@@ -1,14 +1,32 @@
 import { templateService } from '../lib/supabase.js';
+import { ChatOpenAI } from 'langchain/chat_models';
+import { HumanMessage, SystemMessage } from 'langchain/schema';
+import { createWorker } from 'tesseract.js';
 import pdf from 'pdf-parse';
 import xlsx from 'xlsx';
 
+// Initialize OpenAI chat model
+const chatModel = new ChatOpenAI({
+  temperature: 0.2,
+  modelName: 'gpt-4',
+});
+
 export const analyzeTemplate = async (file) => {
   try {
-    const result = await extractTemplateStructure(file);
+    // Extract raw content from the document
+    const { text, metadata } = await extractRawContent(file);
+    
+    // Use AI to analyze the document structure
+    const analysis = await analyzeDocumentWithAI(text, metadata);
+    
+    // Generate field suggestions based on AI analysis
+    const suggestions = await generateFieldSuggestions(analysis);
+    
     return {
-      fields: result.fields,
-      metadata: result.metadata,
-      suggestions: generateFieldSuggestions(result)
+      fields: analysis.fields,
+      metadata: metadata,
+      suggestions: suggestions,
+      layout: analysis.layout
     };
   } catch (error) {
     console.error('Error analyzing template:', error);
@@ -16,143 +34,143 @@ export const analyzeTemplate = async (file) => {
   }
 };
 
-const extractTemplateStructure = async (file) => {
+const extractRawContent = async (file) => {
   switch (file.mimetype) {
     case 'application/pdf':
-      return await analyzePDFTemplate(file);
+      return await extractFromPDF(file);
     case 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':
-      return await analyzeExcelTemplate(file);
+      return await extractFromExcel(file);
+    case 'image/jpeg':
+    case 'image/png':
+      return await extractFromImage(file);
     default:
       throw new Error('Unsupported file type');
   }
 };
 
-const analyzePDFTemplate = async (file) => {
+const extractFromPDF = async (file) => {
   const dataBuffer = file.buffer;
   const data = await pdf(dataBuffer);
   
-  // Extract text and analyze structure
-  const text = data.text;
-  const lines = text.split('\n').filter(line => line.trim());
-  
-  // Basic field detection
-  const fields = [];
-  const commonLabels = [
-    'invoice', 'date', 'number', 'total', 'subtotal', 'tax',
-    'bill to', 'ship to', 'payment terms', 'due date'
-  ];
-
-  lines.forEach((line, index) => {
-    commonLabels.forEach(label => {
-      if (line.toLowerCase().includes(label)) {
-        fields.push({
-          label: label,
-          position: index,
-          context: line.trim()
-        });
-      }
-    });
-  });
-
   return {
-    fields,
+    text: data.text,
     metadata: {
       pageCount: data.numpages,
-      info: data.info
+      info: data.info,
+      type: 'pdf'
     }
   };
 };
 
-const analyzeExcelTemplate = async (file) => {
+const extractFromExcel = async (file) => {
   const workbook = xlsx.read(file.buffer);
-  const fields = [];
+  let text = '';
   
   workbook.SheetNames.forEach(sheetName => {
     const sheet = workbook.Sheets[sheetName];
-    const headers = xlsx.utils.sheet_to_json(sheet, { header: 1 })[0];
-    
-    headers.forEach(header => {
-      if (header) {
-        fields.push({
-          label: header,
-          position: 'header',
-          context: sheetName
-        });
-      }
-    });
+    text += `Sheet: ${sheetName}\n`;
+    text += xlsx.utils.sheet_to_csv(sheet) + '\n\n';
   });
-
+  
   return {
-    fields,
+    text,
     metadata: {
       sheets: workbook.SheetNames,
-      sheetCount: workbook.SheetNames.length
+      type: 'excel'
     }
   };
 };
 
-const generateFieldSuggestions = (analysisResult) => {
-  const suggestions = [];
+const extractFromImage = async (file) => {
+  const worker = await createWorker();
+  await worker.loadLanguage('eng');
+  await worker.initialize('eng');
   
-  analysisResult.fields.forEach(field => {
-    const suggestion = {
-      name: field.label.split(' ')
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' '),
-      type: inferFieldType(field.label),
-      required: isLikelyRequired(field.label),
-      aiRules: {
-        keywords: generateKeywords(field.label),
-        position: inferPosition(field.position),
-        validation: generateValidationRule(field.label)
-      }
-    };
-    
-    suggestions.push(suggestion);
-  });
-
-  return suggestions;
-};
-
-const inferFieldType = (label) => {
-  label = label.toLowerCase();
-  if (label.includes('date')) return 'date';
-  if (label.includes('total') || label.includes('amount') || label.includes('price')) return 'currency';
-  if (label.includes('number') || label.includes('quantity')) return 'number';
-  return 'text';
-};
-
-const isLikelyRequired = (label) => {
-  const criticalFields = ['total', 'number', 'date', 'amount'];
-  return criticalFields.some(field => label.toLowerCase().includes(field));
-};
-
-const generateKeywords = (label) => {
-  const base = label.toLowerCase().split(' ');
-  const variations = [];
+  const { data: { text } } = await worker.recognize(file.buffer);
+  await worker.terminate();
   
-  base.forEach(word => {
-    variations.push(word);
-    if (word === 'number') variations.push('no', '#');
-    if (word === 'total') variations.push('sum', 'amount');
-  });
-  
-  return [...new Set(variations)];
+  return {
+    text,
+    metadata: {
+      type: 'image'
+    }
+  };
 };
 
-const inferPosition = (position) => {
-  if (typeof position === 'number') {
-    if (position < 10) return 'header';
-    if (position > 30) return 'footer';
-    return 'body';
+const analyzeDocumentWithAI = async (text, metadata) => {
+  const systemPrompt = new SystemMessage(`You are an expert document analyzer. Analyze the provided document text and identify:
+1. Document type and purpose
+2. Key fields and their locations
+3. Document structure and layout
+4. Data relationships and hierarchies
+5. Validation rules and patterns
+
+Provide a structured analysis that can be used for automated processing.`);
+
+  const userPrompt = new HumanMessage(`Analyze this document:
+Type: ${metadata.type}
+Content:
+${text.substring(0, 4000)} // Truncate to avoid token limits
+
+Provide analysis in JSON format with the following structure:
+{
+  "documentType": "string",
+  "purpose": "string",
+  "fields": [{
+    "name": "string",
+    "type": "string",
+    "location": "string",
+    "importance": "high|medium|low",
+    "relationships": ["field_names"],
+    "validationRules": ["rules"]
+  }],
+  "layout": {
+    "sections": ["header", "body", "footer"],
+    "structure": "string"
   }
-  return position;
+}`);
+
+  const response = await chatModel.call([systemPrompt, userPrompt]);
+  return JSON.parse(response.content);
 };
 
-const generateValidationRule = (label) => {
-  label = label.toLowerCase();
-  if (label.includes('email')) return '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$';
-  if (label.includes('phone')) return '^\\+?[1-9]\\d{1,14}$';
-  if (label.includes('number')) return '^[A-Z0-9-]+$';
-  return null;
+const generateFieldSuggestions = async (analysis) => {
+  const systemPrompt = new SystemMessage(`You are an expert in document processing automation. Generate field extraction rules and suggestions based on the document analysis.`);
+
+  const userPrompt = new HumanMessage(`Based on this analysis:
+${JSON.stringify(analysis, null, 2)}
+
+Generate detailed field processing rules including:
+1. AI detection strategies
+2. Validation patterns
+3. Data transformation rules
+4. Error handling suggestions
+5. Confidence scoring criteria
+
+Provide output in JSON format.`);
+
+  const response = await chatModel.call([systemPrompt, userPrompt]);
+  return JSON.parse(response.content);
+};
+
+export const validateTemplate = async (template, sampleData) => {
+  const systemPrompt = new SystemMessage(`You are a document validation expert. Validate the template configuration against sample data.`);
+
+  const userPrompt = new HumanMessage(`Template configuration:
+${JSON.stringify(template, null, 2)}
+
+Sample data:
+${JSON.stringify(sampleData, null, 2)}
+
+Validate and provide:
+1. Configuration issues
+2. Missing fields
+3. Validation rule conflicts
+4. Processing efficiency suggestions
+5. Accuracy improvement recommendations
+
+Provide output in JSON format.`);
+
+  const response = await chatModel.call([systemPrompt, userPrompt]);
+  return JSON.parse(response.content);
 };
