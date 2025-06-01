@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node --watch index.js",
+    "dev": "nodemon index.js",
     "start": "node index.js"
   },
   "dependencies": {
@@ -19,5 +19,8 @@
     "pdf-parse": "^1.1.1",
     "tesseract.js": "^5.0.4",
     "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
   }
 }
