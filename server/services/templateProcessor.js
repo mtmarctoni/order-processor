@@ -9,7 +9,9 @@ import xlsx from 'xlsx';
 const chatModel = new ChatOpenAI({
   temperature: 0.2,
   modelName: 'gpt-4',
+  openAIApiKey: process.env.OPENAI_API_KEY // Add this line
 });
+
 
 export const analyzeTemplate = async (file) => {
   try {
