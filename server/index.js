@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -8,6 +8,7 @@ import { dirname, join } from 'path';
 import documentsRouter from './routes/documents.js';
 import templatesRouter from './routes/templates.js';
 import { errorHandler } from './middleware/errorHandler.js';
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
