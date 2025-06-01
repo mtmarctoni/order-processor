@@ -4,6 +4,7 @@ import { Upload, FileText, AlertCircle, ChevronRight, Settings, Save } from 'luc
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import FileUploader from '../components/documents/FileUploader';
+import { templateService } from '../services/templateService';
 
 interface TemplateConfig {
   name: string;
@@ -34,82 +35,52 @@ const TemplateUpload: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleFileUpload = async (files: File[]) => {
-    if (files.length > 0) {
-      setTemplateFile(files[0]);
-      setIsProcessing(true);
-      
-      // Simulate template analysis
-      setTimeout(() => {
-        setIsProcessing(false);
-        setConfig({
-          name: 'Invoice Template',
-          description: 'Standard invoice processing template',
-          documentType: 'invoice',
-          fields: [
-            {
-              id: 'invoice_number',
-              name: 'Invoice Number',
-              type: 'text',
-              required: true,
-              aiRules: {
-                keywords: ['Invoice #', 'Invoice Number', 'No.'],
-                position: 'header',
-                validation: '^[A-Z0-9-]+$'
-              }
-            },
-            {
-              id: 'date',
-              name: 'Invoice Date',
-              type: 'date',
-              required: true,
-              aiRules: {
-                keywords: ['Date', 'Invoice Date'],
-                position: 'header'
-              }
-            },
-            {
-              id: 'total',
-              name: 'Total Amount',
-              type: 'currency',
-              required: true,
-              aiRules: {
-                keywords: ['Total', 'Amount Due', 'Balance Due'],
-                position: 'footer'
-              }
-            }
-          ]
-        });
-        setStep(2);
-      }, 2000);
-    }
-  };
-
-  const handleSaveTemplate = async () => {
+  if (files.length > 0) {
+    setTemplateFile(files[0]);
     setIsProcessing(true);
     
     try {
-      const formData = new FormData();
-      if (templateFile) {
-        formData.append('file', templateFile);
-      }
-      formData.append('config', JSON.stringify(config));
-      
-      const response = await fetch('/api/templates', {
-        method: 'POST',
-        body: formData
+      const analysis = await templateService.analyzeTemplate(files[0]);
+      setConfig({
+        name: analysis.documentType || 'New Template',
+        description: analysis.purpose || '',
+        documentType: analysis.documentType?.toLowerCase() || 'custom',
+        fields: analysis.fields.map((field: any) => ({
+          id: field.name.toLowerCase().replace(/\s+/g, '_'),
+          name: field.name,
+          type: field.type,
+          required: field.importance === 'high',
+          aiRules: {
+            keywords: field.validationRules || [],
+            position: field.location || 'body',
+          },
+        })),
       });
-      
-      if (!response.ok) {
-        throw new Error('Failed to save template');
-      }
-      
-      setStep(3);
+      setStep(2);
     } catch (error) {
-      console.error('Error saving template:', error);
+      console.error('Error analyzing template:', error);
+      // Handle error (show error message to user)
     } finally {
       setIsProcessing(false);
     }
-  };
+  }
+};
+  
+  const handleSaveTemplate = async () => {
+  setIsProcessing(true);
+  
+  try {
+    if (!templateFile) throw new Error('No template file');
+    
+    await templateService.uploadTemplate(templateFile, config);
+    setStep(3);
+  } catch (error) {
+    console.error('Error saving template:', error);
+    // Handle error (show error message to user)
+  } finally {
+    setIsProcessing(false);
+  }
+};
 
   return (
     <div className="h-full flex flex-col">
