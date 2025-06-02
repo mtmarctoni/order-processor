@@ -2,16 +2,19 @@ import { supabase } from '../lib/supabase.js';
 
 export const createTemplate = async (req, res, next) => {
   try {
-    const { name, fields, config } = req.body;
+    const { config } = req.body;
+    const configParsed = JSON.parse(config);
+    console.log('Todo lo recibido en server: ', configParsed);
     const { data, error } = await supabase
       .from('templates')
-      .insert([{ name, fields, config }])
+      .insert([{ name: configParsed.name, type: configParsed.documentType, fields: configParsed.fields }])
       .select()
       .single();
 
     if (error) throw error;
     res.status(201).json(data);
   } catch (error) {
+    console.error('Error creating template:', error);
     next(error);
   }
 };

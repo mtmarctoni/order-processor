@@ -1,29 +1,74 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { ChevronRight, ChevronLeft, ListFilter } from 'lucide-react';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '../components/ui/Button';
 import FileUploader from '../components/documents/FileUploader';
-import DocumentPreview from '../components/documents/DocumentPreview';
 import ExtractedDataPanel from '../components/documents/ExtractedDataPanel';
+import { documentService, DocumentStatus } from '../services/documentService';
 
 const DocumentUpload: React.FC = () => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedDocumentUrl, setSelectedDocumentUrl] = useState<string | undefined>(undefined);
+  const [selectedDocument, setSelectedDocument] = useState<DocumentStatus | null>(null);
+  const [processingJobs, setProcessingJobs] = useState<Record<string, DocumentStatus>>({});
   
-  const handleFilesAdded = (files: File[]) => {
-    setUploadedFiles((prevFiles) => [...prevFiles, ...files]);
+  const handleFilesAdded = async (files: File[]) => {
+    const newFiles = [...uploadedFiles, ...files];
+    setUploadedFiles(newFiles);
     
-    // Simulate processing when files are added
-    if (files.length > 0) {
-      setIsProcessing(true);
-      
-      // Mock processing delay
-      setTimeout(() => {
+    // Process each file
+    for (const file of files) {
+      try {
+        setIsProcessing(true);
+        const response = await documentService.uploadDocument(file);
+        
+        // Track the processing job
+        setProcessingJobs(prev => ({
+          ...prev,
+          [file.name]: {
+            id: response.jobId,
+            status: 'processing',
+            file_name: file.name,
+            file_type: file.type,
+            error: '',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+        }));
+        
+        // Start polling for status
+        pollDocumentStatus(response.jobId, file.name);
+      } catch (error) {
+        console.error('Error uploading file:', error);
+        // Update UI to show error
+      } finally {
         setIsProcessing(false);
-        setSelectedDocumentUrl('https://images.pexels.com/photos/3760093/pexels-photo-3760093.jpeg');
-      }, 3000);
+      }
+    }
+  };
+
+  const pollDocumentStatus = async (jobId: string, fileName: string) => {
+    try {
+      const status = await documentService.getDocumentStatus(jobId);
+      
+      setProcessingJobs(prev => ({
+        ...prev,
+        [fileName]: {
+          ...prev[fileName],
+          ...status,
+          updated_at: new Date().toISOString(),
+        }
+      }));
+
+      // If still processing, poll again after delay
+      if (status.status === 'processing') {
+        setTimeout(() => pollDocumentStatus(jobId, fileName), 2000);
+      } else if (status.status === 'completed') {
+        // Set as selected document when processing is complete
+        setSelectedDocument(status);
+      }
+    } catch (error) {
+      console.error('Error polling document status:', error);
     }
   };
   
@@ -37,121 +82,86 @@ const DocumentUpload: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            Document Upload & Processing
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Upload documents for AI-powered extraction and processing
-          </p>
-        </div>
-        
-        <div className="flex items-center space-x-2">
-          <Button
-            variant="outline"
-            size="sm"
-            leftIcon={<ListFilter size={16} />}
-          >
-            Filters
-          </Button>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          Document Upload & Processing
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">
+          Upload documents for AI-powered extraction and processing
+        </p>
       </div>
-      
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center w-full max-w-3xl mx-auto">
-          <div className="w-full flex items-center">
-            {[1, 2, 3].map((step) => (
-              <React.Fragment key={step}>
-                <div className="relative flex items-center justify-center flex-1">
-                  <button
-                    onClick={() => step < currentStep && setCurrentStep(step)}
-                    disabled={step > currentStep}
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-medium text-sm transition-colors ${
-                      currentStep === step
-                        ? 'bg-primary-500 text-white'
-                        : currentStep > step
-                        ? 'bg-success-100 text-success-700 dark:bg-success-900/20 dark:text-success-300'
-                        : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
-                    }`}
-                  >
-                    {step}
-                  </button>
-                  
-                  <span className={`absolute -bottom-6 whitespace-nowrap text-xs font-medium ${
-                    currentStep === step 
-                      ? 'text-primary-500' 
-                      : currentStep > step
-                      ? 'text-success-500'
-                      : 'text-gray-500 dark:text-gray-400'
-                  }`}>
-                    {step === 1 ? 'Upload' : step === 2 ? 'Extract & Verify' : 'Export'}
-                  </span>
-                </div>
-                
-                {step < 3 && (
-                  <div className={`flex-1 h-1 ${
-                    currentStep > step ? 'bg-success-500' : 'bg-gray-200 dark:bg-gray-700'
-                  }`} />
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
-      </div>
-      
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-0">
-        <motion.div
-          key={`step-${currentStep}-left`}
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          className="h-full flex flex-col"
-        >
-          {currentStep === 1 ? (
-            <FileUploader onFilesAdded={handleFilesAdded} />
-          ) : (
-            <DocumentPreview 
-              documentUrl={selectedDocumentUrl} 
-              isProcessing={isProcessing} 
-            />
+
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <FileUploader 
+            onFilesAdded={handleFilesAdded} 
+            isProcessing={isProcessing} 
+          />
+          
+          {uploadedFiles.length > 0 && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">Uploaded Documents</h3>
+              <div className="space-y-2">
+                {uploadedFiles.map((file, index) => {
+                  const job = processingJobs[file.name];
+                  return (
+                    <div 
+                      key={index} 
+                      className="p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                      onClick={() => job && setSelectedDocument(job)}
+                    >
+                      <div className="flex justify-between items-center">
+                        <span className="font-medium truncate">{file.name}</span>
+                        <span className={`text-sm px-2 py-1 rounded-full ${
+                          !job ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                          job.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                        }`}>
+                          {!job ? 'Pending' : job.status}
+                        </span>
+                      </div>
+                      {job?.updated_at && (
+                        <div className="text-xs text-gray-500 mt-1">
+                          Last updated: {new Date(job.updated_at).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
           )}
-        </motion.div>
-        
-        <motion.div
-          key={`step-${currentStep}-right`}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.3 }}
-          className="h-full flex flex-col"
-        >
-          {currentStep === 1 ? (
-            <DocumentPreview 
-              documentUrl={selectedDocumentUrl} 
-              isProcessing={isProcessing} 
-            />
+        </div>
+
+        <div className="lg:col-span-1">
+          {selectedDocument ? (
+            <ExtractedDataPanel document={selectedDocument} />
           ) : (
-            <ExtractedDataPanel isProcessing={isProcessing} />
+            <div className="p-6 border rounded-lg bg-gray-50 dark:bg-gray-800 text-center">
+              <p className="text-gray-500 dark:text-gray-400">
+                Select a document to view extracted data
+              </p>
+            </div>
           )}
-        </motion.div>
+        </div>
       </div>
-      
+
       <div className="mt-8 flex justify-between">
-        <Button 
-          variant="outline" 
-          leftIcon={<ChevronLeft size={16} />}
+        <Button
+          variant="outline"
           onClick={prevStep}
           disabled={currentStep === 1}
+          leftIcon={<ChevronLeft size={16} />}
         >
           Previous
         </Button>
-        
-        <Button 
-          rightIcon={<ChevronRight size={16} />}
+        <Button
+          variant="default"
           onClick={nextStep}
-          disabled={currentStep === 3 || isProcessing || (!uploadedFiles.length && currentStep === 1)}
+          rightIcon={<ChevronRight size={16} />}
+          disabled={!selectedDocument || selectedDocument.status !== 'completed'}
         >
-          {currentStep === 3 ? 'Finish' : 'Next'}
+          Next
         </Button>
       </div>
     </div>

@@ -3,8 +3,10 @@ import axios from 'axios';
 export const templateService = {
   async uploadTemplate(file: File, config: any) {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', JSON.stringify(file));
     formData.append('config', JSON.stringify(config));
+
+    console.log('Template data sended to server:', { file, config });
 
     const response = await axios.post('/api/templates', formData, {
       headers: {

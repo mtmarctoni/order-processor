@@ -12,8 +12,8 @@ router.post('/analyze', upload.single('file'), async (req, res, next) => {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-
     const analysis = await analyzeTemplate(req.file);
+    console.log('Analysis result:', analysis);
     res.json(analysis);
   } catch (error) {
     next(error);

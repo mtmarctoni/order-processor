@@ -2,8 +2,10 @@ import { templateService } from '../lib/supabase.js';
 import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { createWorker } from 'tesseract.js';
-import pdf from 'pdf-parse';
+import pdf from '../utils/pdfParseLoader.cjs';
 import ExcelJS from 'exceljs';
+import fs from 'fs/promises';
+import path from 'path';
 
 // Initialize OpenAI chat model
 const chatModel = new ChatOpenAI({
@@ -14,26 +16,50 @@ const chatModel = new ChatOpenAI({
 
 export const analyzeTemplate = async (file) => {
   try {
+    console.log('File uploaded:', file);
+
+    const fileWithBuffer = {
+      ...file,
+      buffer: await getFileBuffer(file.path)
+    };
+
     // Extract raw content from the document
-    const { text, metadata } = await extractRawContent(file);
+    const extractionResult = await extractRawContent(fileWithBuffer);
+    if (!extractionResult || !extractionResult.text) {
+      throw new Error('Failed to extract content from file');
+    }
+
+    const { text, metadata } = extractionResult;
     
-    // Use AI to analyze the document structure
-    const analysis = await analyzeDocumentWithAI(text, metadata);
-    
-    // Generate field suggestions based on AI analysis
-    const suggestions = await generateFieldSuggestions(analysis);
+    let analysis = null;
+    let suggestions = null;
+    try{
+      // Use AI to analyze the document structure
+      analysis = await analyzeDocumentWithAI(text, metadata);
+      
+      // Generate field suggestions based on AI analysis
+      suggestions = await generateFieldSuggestions(analysis);
+    } catch (error) {
+      console.error('AI error:', error);
+    }
     
     return {
-      fields: analysis.fields,
+      fields: analysis?.fields || [],
       metadata: metadata,
-      suggestions: suggestions,
-      layout: analysis.layout
+      suggestions: suggestions || [],
+      layout: analysis?.layout || {}
     };
   } catch (error) {
     console.error('Error analyzing template:', error);
     throw error;
   }
 };
+
+const getFileBuffer = async (filePath) => {
+  const absolutePath = path.resolve(filePath);
+  const fileBuffer = await fs.readFile(absolutePath);
+  return fileBuffer;
+}
 
 const extractRawContent = async (file) => {
   switch (file.mimetype) {
@@ -66,21 +92,47 @@ const extractFromPDF = async (file) => {
 const extractFromExcel = async (file) => {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(file.buffer);
-  let text = '';
-  
+  const allData = {};
+
+  // Iterate through all worksheets
   workbook.eachSheet((worksheet, sheetId) => {
-    text += `Sheet: ${sheetId}\n`;
-    text += xlsx.utils.sheet_to_csv(sheet) + '\n\n';
+    const sheetData = [];
+    
+    // Get worksheet name
+    const sheetName = worksheet.name;
+    
+    // Iterate through all rows
+    worksheet.eachRow({ includeEmpty: true }, (row, rowNumber) => {
+      // Extract cell values, skip empty first element
+      const rowValues = row.values.slice(1); 
+      
+      // Convert rich text to plain text format
+      const cleanValues = rowValues.map(cell => {
+        if (cell && cell.richText) {
+          return cell.richText.map(t => t.text).join('');
+        }
+        return cell;
+      });
+      
+      sheetData.push(cleanValues);
+    });
+
+    allData[sheetName] = {
+      headers: sheetData[0] || [], // First row as headers
+      rows: sheetData.slice(1)     // Remaining rows as data
+    };
   });
-  
+
   return {
-    text,
+    text: JSON.stringify(allData),
     metadata: {
-      sheets: workbook.SheetNames,
+      sheets: workbook.worksheets.map(ws => ws.name),
+      totalSheets: workbook.worksheets.length,
       type: 'excel'
     }
   };
 };
+
 
 const extractFromImage = async (file) => {
   const worker = await createWorker();

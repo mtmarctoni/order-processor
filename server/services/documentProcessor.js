@@ -1,4 +1,5 @@
-import pdf from 'pdf-parse';
+// import pdf from 'pdf-parse';
+import pdf from '../utils/pdfParseLoader.cjs';
 import ExcelJS from 'exceljs';
 import { supabase } from '../lib/supabase.js';
 

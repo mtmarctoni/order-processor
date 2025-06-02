@@ -41,6 +41,7 @@ const TemplateUpload: React.FC = () => {
     
     try {
       const analysis = await templateService.analyzeTemplate(files[0]);
+      console.log('Analysis result:', analysis);
       setConfig({
         name: analysis.documentType || 'New Template',
         description: analysis.purpose || '',
@@ -72,6 +73,7 @@ const TemplateUpload: React.FC = () => {
   try {
     if (!templateFile) throw new Error('No template file');
     
+    console.log('Template data in client:', { templateFile, config });
     await templateService.uploadTemplate(templateFile, config);
     setStep(3);
   } catch (error) {
@@ -203,7 +205,7 @@ const TemplateUpload: React.FC = () => {
                     Fields Configuration
                   </label>
                   <div className="space-y-4">
-                    {config.fields.map((field, index) => (
+                    {config.fields.map((field) => (
                       <div
                         key={field.id}
                         className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg"
@@ -469,6 +471,10 @@ const TemplateUpload: React.FC = () => {
                   <Button
                     variant="default"
                     leftIcon={<ChevronRight size={16} />}
+                    onClick={() => {
+                      // redirect to '/upload'
+                      
+                    }}
                   >
                     Start Processing Documents
                   </Button>
