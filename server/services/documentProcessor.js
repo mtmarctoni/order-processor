@@ -1,5 +1,5 @@
 import pdf from 'pdf-parse';
-import xlsx from 'xlsx';
+import ExcelJS from 'exceljs';
 import { supabase } from '../lib/supabase.js';
 
 export const processFile = async (file) => {
@@ -67,11 +67,12 @@ const extractFromPDF = async (file) => {
 };
 
 const extractFromExcel = async (file) => {
-  const workbook = xlsx.read(file.buffer);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(file.buffer);
   const result = {};
   
-  workbook.SheetNames.forEach(sheetName => {
-    result[sheetName] = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+  workbook.eachSheet((worksheet, sheetId) => {
+    result[sheetId] = worksheet.getSheetValues();
   });
   
   return result;

@@ -1,6 +1,9 @@
 {
-  "name": "docusense-backend",
+  "name": "order-processor-backend",
   "version": "1.0.0",
+  "description": "Order processor backend",
+  "author": "mtmarctoni",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "nodemon index.js",
@@ -12,13 +15,13 @@
     "@supabase/supabase-js": "^2.39.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
     "helmet": "^7.1.0",
     "multer": "^1.4.5-lts.1",
     "pdf-parse": "^1.1.1",
-    "tesseract.js": "^5.0.4",
-    "xlsx": "^0.18.5"
+    "tesseract.js": "^5.0.4"
   },
   "devDependencies": {
     "nodemon": "^3.1.0"

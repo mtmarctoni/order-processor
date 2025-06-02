@@ -3,7 +3,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { createWorker } from 'tesseract.js';
 import pdf from 'pdf-parse';
-import xlsx from 'xlsx';
+import ExcelJS from 'exceljs';
 
 // Initialize OpenAI chat model
 const chatModel = new ChatOpenAI({
@@ -64,12 +64,12 @@ const extractFromPDF = async (file) => {
 };
 
 const extractFromExcel = async (file) => {
-  const workbook = xlsx.read(file.buffer);
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(file.buffer);
   let text = '';
   
-  workbook.SheetNames.forEach(sheetName => {
-    const sheet = workbook.Sheets[sheetName];
-    text += `Sheet: ${sheetName}\n`;
+  workbook.eachSheet((worksheet, sheetId) => {
+    text += `Sheet: ${sheetId}\n`;
     text += xlsx.utils.sheet_to_csv(sheet) + '\n\n';
   });
   
