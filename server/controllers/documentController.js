@@ -24,7 +24,7 @@ export const getDocumentStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { data, error } = await supabase
-      .from('documents')
+      .from('processing_jobs')
       .select('*')
       .eq('id', id)
       .single();
@@ -43,7 +43,7 @@ export const getDocumentStatus = async (req, res, next) => {
 export const getAllDocuments = async (req, res, next) => {
   try {
     const { data, error } = await supabase
-      .from('documents')
+      .from('processing_jobs')
       .select('*')
       .order('created_at', { ascending: false });
 

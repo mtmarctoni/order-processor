@@ -2,6 +2,8 @@
 import pdf from '../utils/pdfParseLoader.cjs';
 import ExcelJS from 'exceljs';
 import { supabase } from '../lib/supabase.js';
+import fs from 'fs/promises';
+import path from 'path';
 
 export const processFile = async (file) => {
   try {
@@ -52,11 +54,15 @@ const extractDataFromFile = async (file) => {
 };
 
 const extractFromPDF = async (file) => {
-  // Use the buffer directly from the uploaded file
-  const dataBuffer = file.buffer;
+
+  console.log('Processing PDF file:', file);
+  const dataBuffer = await getFileBuffer(file.path);
+  console.log('Data buffer:', dataBuffer);
+
   
   try {
     const data = await pdf(dataBuffer);
+    console.log('PDF data:', data);
     return {
       text: data.text,
       info: data.info,
@@ -78,3 +84,9 @@ const extractFromExcel = async (file) => {
   
   return result;
 };
+
+const getFileBuffer = async (filePath) => {
+  const absolutePath = path.resolve(filePath);
+  const fileBuffer = await fs.readFile(absolutePath);
+  return fileBuffer;
+}

@@ -12,6 +12,8 @@ const DocumentUpload: React.FC = () => {
   const [selectedDocument, setSelectedDocument] = useState<DocumentStatus | null>(null);
   const [processingJobs, setProcessingJobs] = useState<Record<string, DocumentStatus>>({});
   
+  const totalSteps = 3;
+
   const handleFilesAdded = async (files: File[]) => {
     const newFiles = [...uploadedFiles, ...files];
     setUploadedFiles(newFiles);
@@ -73,11 +75,15 @@ const DocumentUpload: React.FC = () => {
   };
   
   const nextStep = () => {
-    setCurrentStep((prev) => Math.min(prev + 1, 3));
+    if (currentStep < totalSteps) {
+      setCurrentStep(prevStep => prevStep + 1);
+    }
   };
   
   const prevStep = () => {
-    setCurrentStep((prev) => Math.max(prev - 1, 1));
+    if (currentStep > 1) {
+      setCurrentStep(prevStep => prevStep - 1);
+    }
   };
 
   return (
