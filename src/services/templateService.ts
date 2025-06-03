@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { Template } from '../types/template';
 
 export const templateService = {
-  async uploadTemplate(file: File, config: any) {
+  async uploadTemplate(file: File, config: any): Promise<Template> {
     const formData = new FormData();
     formData.append('file', JSON.stringify(file));
     formData.append('config', JSON.stringify(config));
@@ -17,7 +18,7 @@ export const templateService = {
     return response.data;
   },
 
-  async analyzeTemplate(file: File) {
+  async analyzeTemplate(file: File): Promise<any> {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -30,8 +31,17 @@ export const templateService = {
     return response.data;
   },
 
-  async getTemplates() {
+  async getTemplates(): Promise<Template[]> {
     const response = await axios.get('/api/templates');
     return response.data;
+  },
+
+  async getTemplateById(id: string): Promise<Template> {
+    const response = await axios.get(`/api/templates/${id}`);
+    return response.data;
+  },
+
+  async deleteTemplate(id: string): Promise<void> {
+    await axios.delete(`/api/templates/${id}`);
   },
 };

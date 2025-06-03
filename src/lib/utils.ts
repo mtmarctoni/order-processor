@@ -18,7 +18,7 @@ export const formatBytes = (bytes: number, decimals = 2) => {
 };
 
 export const formatDate = (date: Date) => {
-  return new Intl.DateTimeFormatter().format(date);
+  return new Intl.DateTimeFormat().format(date);
 };
 
 export const truncateString = (str: string, num: number) => {

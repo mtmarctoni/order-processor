@@ -1,18 +1,9 @@
-import { templateService } from '../lib/supabase.js';
-import { ChatOpenAI } from '@langchain/openai';
-import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { createWorker } from 'tesseract.js';
 import pdf from '../utils/pdfParseLoader.cjs';
 import ExcelJS from 'exceljs';
 import fs from 'fs/promises';
 import path from 'path';
-
-// Initialize OpenAI chat model
-const chatModel = new ChatOpenAI({
-  temperature: 0.2,
-  modelName: 'gpt-4',
-  openAIApiKey: process.env.OPENAI_API_KEY
-});
+import { aiService } from './aiService.js';
 
 export const analyzeTemplate = async (file) => {
   try {
@@ -35,10 +26,12 @@ export const analyzeTemplate = async (file) => {
     let suggestions = null;
     try{
       // Use AI to analyze the document structure
-      analysis = await analyzeDocumentWithAI(text, metadata);
+      analysis = await aiService.analyzeDocument(text, metadata);
+      console.log('Analysis result:', analysis);
       
       // Generate field suggestions based on AI analysis
-      suggestions = await generateFieldSuggestions(analysis);
+      suggestions = await aiService.generateFieldSuggestions(analysis);
+      console.log('Suggestions result:', suggestions);
     } catch (error) {
       console.error('AI error:', error);
     }
@@ -148,82 +141,4 @@ const extractFromImage = async (file) => {
       type: 'image'
     }
   };
-};
-
-const analyzeDocumentWithAI = async (text, metadata) => {
-  const systemPrompt = new SystemMessage(`You are an expert document analyzer. Analyze the provided document text and identify:
-1. Document type and purpose
-2. Key fields and their locations
-3. Document structure and layout
-4. Data relationships and hierarchies
-5. Validation rules and patterns
-
-Provide a structured analysis that can be used for automated processing.`);
-
-  const userPrompt = new HumanMessage(`Analyze this document:
-Type: ${metadata.type}
-Content:
-${text.substring(0, 4000)} // Truncate to avoid token limits
-
-Provide analysis in JSON format with the following structure:
-{
-  "documentType": "string",
-  "purpose": "string",
-  "fields": [{
-    "name": "string",
-    "type": "string",
-    "location": "string",
-    "importance": "high|medium|low",
-    "relationships": ["field_names"],
-    "validationRules": ["rules"]
-  }],
-  "layout": {
-    "sections": ["header", "body", "footer"],
-    "structure": "string"
-  }
-}`);
-
-  const response = await chatModel.invoke([systemPrompt, userPrompt]);
-  return JSON.parse(response.content);
-};
-
-const generateFieldSuggestions = async (analysis) => {
-  const systemPrompt = new SystemMessage(`You are an expert in document processing automation. Generate field extraction rules and suggestions based on the document analysis.`);
-
-  const userPrompt = new HumanMessage(`Based on this analysis:
-${JSON.stringify(analysis, null, 2)}
-
-Generate detailed field processing rules including:
-1. AI detection strategies
-2. Validation patterns
-3. Data transformation rules
-4. Error handling suggestions
-5. Confidence scoring criteria
-
-Provide output in JSON format.`);
-
-  const response = await chatModel.invoke([systemPrompt, userPrompt]);
-  return JSON.parse(response.content);
-};
-
-export const validateTemplate = async (template, sampleData) => {
-  const systemPrompt = new SystemMessage(`You are a document validation expert. Validate the template configuration against sample data.`);
-
-  const userPrompt = new HumanMessage(`Template configuration:
-${JSON.stringify(template, null, 2)}
-
-Sample data:
-${JSON.stringify(sampleData, null, 2)}
-
-Validate and provide:
-1. Configuration issues
-2. Missing fields
-3. Validation rule conflicts
-4. Processing efficiency suggestions
-5. Accuracy improvement recommendations
-
-Provide output in JSON format.`);
-
-  const response = await chatModel.invoke([systemPrompt, userPrompt]);
-  return JSON.parse(response.content);
 };

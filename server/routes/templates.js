@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { createTemplate, getTemplates, updateTemplate, deleteTemplate } from '../controllers/templateController.js';
+import { createTemplate, getTemplates, getTemplateById, updateTemplate, deleteTemplate } from '../controllers/templateController.js';
 import { analyzeTemplate } from '../services/templateProcessor.js';
 
 const router = express.Router();
@@ -20,6 +20,7 @@ router.post('/analyze', upload.single('file'), async (req, res, next) => {
   }
 });
 router.get('/', getTemplates);
+router.get('/:id', getTemplateById);
 router.put('/:id', updateTemplate);
 router.delete('/:id', deleteTemplate);
 

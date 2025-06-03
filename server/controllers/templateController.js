@@ -33,6 +33,22 @@ export const getTemplates = async (req, res, next) => {
   }
 };
 
+export const getTemplateById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from('templates')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const updateTemplate = async (req, res, next) => {
   try {
     const { id } = req.params;
