@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Upload, AlertCircle } from 'lucide-react';
 import { Button } from '../ui/Button';
-import { formatBytes, isValidFileType } from '../../lib/utils';
+import { formatBytes } from '../../lib/utils';
 
 // Map of file extensions to MIME types
 const MIME_TYPES: Record<string, string> = {
@@ -14,6 +14,7 @@ const MIME_TYPES: Record<string, string> = {
 interface FileUploaderProps {
   onFilesAdded: (files: File[]) => void;
   isProcessing?: boolean;
+  disabled?: boolean;
   acceptedFileTypes?: string[]; // e.g. ['.pdf', '.xlsx']
   maxFiles?: number;
   maxSize?: number;

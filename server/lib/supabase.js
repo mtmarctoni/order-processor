@@ -94,5 +94,26 @@ export const processingService = {
 
     if (error) throw error;
     return data;
+  },
+
+  async getAll() {
+    const { data, error } = await supabase
+      .from('processing_jobs')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+  },
+
+  async getById(id) {
+    const { data, error } = await supabase
+      .from('processing_jobs')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (error) throw error;
+    return data;
   }
 };

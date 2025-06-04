@@ -1,39 +1,29 @@
 // import pdf from 'pdf-parse';
 import pdf from '../utils/pdfParseLoader.cjs';
 import ExcelJS from 'exceljs';
-import { supabase } from '../lib/supabase.js';
+import { processingService } from '../lib/supabase.js';
 import fs from 'fs/promises';
 import path from 'path';
 
 export const processFile = async (file) => {
   try {
     // Create a processing job
-    const { data: job, error: jobError } = await supabase
-      .from('processing_jobs')
-      .insert([{
-        status: 'processing',
-        file_name: file.originalname,
-        file_type: file.mimetype
-      }])
-      .select()
-      .single();
+    const job = await processingService.createJob({
+      status: 'processing',
+      file_name: file.originalname,
+      file_type: file.mimetype
+    });
 
-    if (jobError) throw jobError;
+    const fileWithBuffer = {
+      ...file,
+      buffer: await getFileBuffer(file.path)
+    };
 
     // Process the file based on its type
-    const result = await extractDataFromFile(file);
+    const result = await extractDataFromFile(fileWithBuffer);
 
     // Update job with results
-    const { error: updateError } = await supabase
-      .from('processing_jobs')
-      .update({
-        status: 'completed',
-        result: result,
-        completed_at: new Date()
-      })
-      .eq('id', job.id);
-
-    if (updateError) throw updateError;
+    await processingService.updateJobStatus(job.id, 'completed', result);
 
     return job;
   } catch (error) {
@@ -56,7 +46,7 @@ const extractDataFromFile = async (file) => {
 const extractFromPDF = async (file) => {
 
   console.log('Processing PDF file:', file);
-  const dataBuffer = await getFileBuffer(file.path);
+  const dataBuffer = file.buffer;
   console.log('Data buffer:', dataBuffer);
 
   

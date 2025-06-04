@@ -1,5 +1,23 @@
-import { supabase } from '../lib/supabase.js';
+import { processingService } from '../lib/supabase.js';
 import { processFile } from '../services/documentProcessor.js';
+
+// finish this function
+export const processDocumentWithAIandTemplate = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+
+    const file = req.file;
+    const { templateId } = req.body;
+    const processedOrder = await processWithAIandTemplate(file, templateId);
+    
+    // send the excel to download
+    res.json(processedOrder);
+  } catch (error) {
+    next(error);
+  }
+};
 
 export const processDocument = async (req, res, next) => {
   try {
@@ -23,18 +41,13 @@ export const processDocument = async (req, res, next) => {
 export const getDocumentStatus = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { data, error } = await supabase
-      .from('processing_jobs')
-      .select('*')
-      .eq('id', id)
-      .single();
+    const document = await processingService.getById(id);
 
-    if (error) throw error;
-    if (!data) {
+    if (!document) {
       return res.status(404).json({ error: 'Document not found' });
     }
 
-    res.json(data);
+    res.json(document);
   } catch (error) {
     next(error);
   }
@@ -42,13 +55,13 @@ export const getDocumentStatus = async (req, res, next) => {
 
 export const getAllDocuments = async (req, res, next) => {
   try {
-    const { data, error } = await supabase
-      .from('processing_jobs')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const documents = await processingService.getAll();
 
-    if (error) throw error;
-    res.json(data);
+    if (!documents) {
+      return res.status(404).json({ error: 'Documents not found' });
+    }
+
+    res.json(documents);
   } catch (error) {
     next(error);
   }

@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '../components/ui/Button';
+import { Select } from '../components/ui/select';
 import FileUploader from '../components/documents/FileUploader';
 import ExtractedDataPanel from '../components/documents/ExtractedDataPanel';
 import { documentService, DocumentStatus } from '../services/documentService';
+import { Template } from '../types/template';
+import { templateService } from '../services/templateService';
 
 const DocumentUpload: React.FC = () => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -11,10 +14,34 @@ const DocumentUpload: React.FC = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedDocument, setSelectedDocument] = useState<DocumentStatus | null>(null);
   const [processingJobs, setProcessingJobs] = useState<Record<string, DocumentStatus>>({});
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
   
   const totalSteps = 3;
 
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+  
+  const loadTemplates = async () => {
+    setIsLoadingTemplates(true);
+    try {
+      const templates = await templateService.getTemplates();
+      setTemplates(templates);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    } finally {
+      setIsLoadingTemplates(false);
+    }
+  };
+
   const handleFilesAdded = async (files: File[]) => {
+    if (!selectedTemplate) {
+      alert('Please select a template first');
+      return;
+    }
+    
     const newFiles = [...uploadedFiles, ...files];
     setUploadedFiles(newFiles);
     
@@ -99,6 +126,29 @@ const DocumentUpload: React.FC = () => {
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
+{!isLoadingTemplates && (
+<div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+<div className="space-y-2">
+<label htmlFor="template-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+Select Template
+</label>
+<Select
+  id="template-select"
+  value={selectedTemplate}
+  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedTemplate(e.target.value)}
+    options={templates.map((template) => ({
+    value: template.id,
+    label: `${template.name} (${template.type})`,
+    }))}
+  placeholder="Select a template"
+  className="w-full"
+/>
+<p className="text-xs text-gray-500 dark:text-gray-400">
+Choose a template to define how the document should be processed
+</p>
+</div>
+</div>
+)}
           <FileUploader 
             onFilesAdded={handleFilesAdded} 
             isProcessing={isProcessing} 
