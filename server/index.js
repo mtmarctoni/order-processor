@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import documentsRouter from './routes/documents.js';
 import templatesRouter from './routes/templates.js';
+import processedOrdersRouter from './routes/processedOrderRoutes.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 dotenv.config();
@@ -31,6 +32,7 @@ app.use(limiter);
 // Routes
 app.use('/api/documents', documentsRouter);
 app.use('/api/templates', templatesRouter);
+app.use('/api/processed-orders', processedOrdersRouter);
 
 // Error handling
 app.use(errorHandler);

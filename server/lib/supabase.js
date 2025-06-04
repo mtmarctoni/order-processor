@@ -68,6 +68,8 @@ export const templateService = {
 };
 
 // Processing job operations
+
+
 export const processingService = {
   async createJob(jobData) {
     const { data, error } = await supabase
@@ -115,5 +117,77 @@ export const processingService = {
 
     if (error) throw error;
     return data;
-  }
+  },
+};
+
+export const processedOrdersService = {
+  async createProcessedOrder({ job_id, template_id, processed_data }) {
+    const { data, error } = await supabase
+      .from('processed_orders')
+      .insert({
+        job_id,
+        template_id,
+        processed_data,
+        status: 'completed'
+      })
+      .select()
+      .single();
+      
+    if (error) throw error;
+    return data;
+  },
+  
+  async getProcessedOrderById(id) {
+    const { data, error } = await supabase
+      .from('processed_orders')
+      .select(`
+        *,
+        processing_jobs:job_id(*),
+        templates:template_id(*)
+      `)
+      .eq('id', id)
+      .single();
+      
+    if (error) throw error;
+    return data;
+  },
+  
+  async getProcessedOrdersByJobId(jobId) {
+    const { data, error } = await supabase
+      .from('processed_orders')
+      .select(`
+        *,
+        templates:template_id(*)
+      `)
+      .eq('job_id', jobId)
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    return data;
+  },
+  
+  async updateProcessedOrder(id, updates) {
+    const { data, error } = await supabase
+      .from('processed_orders')
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
+      .select()
+      .single();
+      
+    if (error) throw error;
+    return data;
+  },
+  
+  async deleteProcessedOrder(id) {
+    const { error } = await supabase
+      .from('processed_orders')
+      .delete()
+      .eq('id', id);
+      
+    if (error) throw error;
+    return true;
+  }  
 };

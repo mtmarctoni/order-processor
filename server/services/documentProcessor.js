@@ -5,6 +5,44 @@ import { processingService } from '../lib/supabase.js';
 import fs from 'fs/promises';
 import path from 'path';
 
+export const processFileWithAIandTemplate = async (jobId, templateId) => {
+  try {
+    // Get the job details
+    const job = await processingService.getById(jobId);
+    if (!job) {
+      throw new Error('Job not found');
+    }
+
+    // Get the template
+    const template = await processingService.getTemplateById(templateId);
+    if (!template) {
+      throw new Error('Template not found');
+    }
+
+    // call your AI service to process the text with the template
+    // analyzeDocumentWithTemplate -> modify this function to accept the job and template
+    // first be clear of the format of the job and template
+    console.log('Job:', job);
+    console.log('Template:', template);
+    
+    // For now, we'll return a mock response
+    const processedData = {
+      extracted_text: text,
+      metadata: {
+        ...metadata,
+        template_used: template.name,
+        processed_at: new Date().toISOString()
+      },
+      // Add any other fields your AI processing would generate
+    };
+
+    return processedData;
+  } catch (error) {
+    console.error('Error processing file with AI:', error);
+    throw error;
+  }
+}
+
 export const processFile = async (file) => {
   try {
     // Create a processing job

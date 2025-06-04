@@ -1,16 +1,11 @@
 import { processingService } from '../lib/supabase.js';
-import { processFile } from '../services/documentProcessor.js';
+import { processFile, processFileWithAIandTemplate } from '../services/documentProcessor.js';
 
 // finish this function
 export const processDocumentWithAIandTemplate = async (req, res, next) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-
-    const file = req.file;
-    const { templateId } = req.body;
-    const processedOrder = await processWithAIandTemplate(file, templateId);
+    const { docId, templateId } = req.body;
+    const processedOrder = await processFileWithAIandTemplate(docId, templateId);
     
     // send the excel to download
     res.json(processedOrder);
