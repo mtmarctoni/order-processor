@@ -1,23 +1,24 @@
+import { Request, Response, NextFunction } from 'express';
 import { processingService } from '../lib/supabase.js';
 import { processFile, processFileWithAIandTemplate } from '../services/documentProcessor.js';
 
-// finish this function
-export const processDocumentWithAIandTemplate = async (req, res, next) => {
+export const processDocumentWithAIandTemplate = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { docId, templateId } = req.body;
+    const { docId, templateId } = req.body as { docId: string; templateId: string };
     const processedOrder = await processFileWithAIandTemplate(docId, templateId);
     
-    // send the excel to download
     res.json(processedOrder);
+    return;
   } catch (error) {
     next(error);
   }
 };
 
-export const processDocument = async (req, res, next) => {
+export const processDocument = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
     }
 
     const file = req.file;
@@ -33,13 +34,14 @@ export const processDocument = async (req, res, next) => {
   }
 };
 
-export const getDocumentStatus = async (req, res, next) => {
+export const getDocumentStatus = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params;
     const document = await processingService.getById(id);
 
     if (!document) {
-      return res.status(404).json({ error: 'Document not found' });
+      res.status(404).json({ error: 'Document not found' });
+      return;
     }
 
     res.json(document);
@@ -48,12 +50,13 @@ export const getDocumentStatus = async (req, res, next) => {
   }
 };
 
-export const getAllDocuments = async (req, res, next) => {
+export const getAllDocuments = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const documents = await processingService.getAll();
 
     if (!documents) {
-      return res.status(404).json({ error: 'Documents not found' });
+      res.status(404).json({ error: 'Documents not found' });
+      return;
     }
 
     res.json(documents);

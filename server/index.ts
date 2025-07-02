@@ -1,5 +1,7 @@
 import dotenv from 'dotenv';
-import express from 'express';
+// @ts-ignore
+import express, { type Express } from 'express';
+// @ts-ignore
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
@@ -10,13 +12,13 @@ import { errorHandler } from './middleware/errorHandler.js';
 
 dotenv.config();
 
-const app = express();
-const port = process.env.PORT || 3000;
+const app: Express = express();
+const port: number = Number(process.env.PORT) || 3000;
 
 // Security middleware
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL!,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));

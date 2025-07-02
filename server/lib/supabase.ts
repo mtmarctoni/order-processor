@@ -2,6 +2,8 @@ import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 dotenv.config();
 
+import {type ProcessingService} from '../types/supabase.types';
+
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_KEY;
 
@@ -70,7 +72,7 @@ export const templateService = {
 // Processing job operations
 
 
-export const processingService = {
+export const processingService: ProcessingService = {
   async createJob(jobData) {
     const { data, error } = await supabase
       .from('processing_jobs')
