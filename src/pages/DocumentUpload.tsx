@@ -1,47 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { ChevronRight, ChevronLeft } from 'lucide-react';
+import React, { useState } from 'react';
+import { Upload, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '../components/ui/Button';
-import { Select } from '../components/ui/select';
 import FileUploader from '../components/documents/FileUploader';
 import ExtractedDataPanel from '../components/documents/ExtractedDataPanel';
 import { documentService, DocumentStatus } from '../services/documentService';
-import { Template } from '../types/template';
-import { templateService } from '../services/templateService';
+import { useNavigate } from 'react-router-dom';
 
 const DocumentUpload: React.FC = () => {
+  const navigate = useNavigate();
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [currentStep, setCurrentStep] = useState(1);
   const [selectedDocument, setSelectedDocument] = useState<DocumentStatus | null>(null);
   const [processingJobs, setProcessingJobs] = useState<Record<string, DocumentStatus>>({});
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
-  const [templates, setTemplates] = useState<Template[]>([]);
-  const [isLoadingTemplates, setIsLoadingTemplates] = useState(false);
-  
-  const totalSteps = 3;
-
-  useEffect(() => {
-    loadTemplates();
-  }, []);
-  
-  const loadTemplates = async () => {
-    setIsLoadingTemplates(true);
-    try {
-      const templates = await templateService.getTemplates();
-      setTemplates(templates);
-    } catch (error) {
-      console.error('Error fetching templates:', error);
-    } finally {
-      setIsLoadingTemplates(false);
-    }
-  };
 
   const handleFilesAdded = async (files: File[]) => {
-    if (!selectedTemplate) {
-      alert('Please select a template first');
-      return;
-    }
-    
     const newFiles = [...uploadedFiles, ...files];
     setUploadedFiles(newFiles);
     
@@ -101,84 +73,88 @@ const DocumentUpload: React.FC = () => {
     }
   };
   
-  const nextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(prevStep => prevStep + 1);
-    }
-  };
-  
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(prevStep => prevStep - 1);
-    }
+  const handleProceedToProcessing = () => {
+    navigate('/process');
   };
 
   return (
     <div className="h-full flex flex-col">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-          Document Upload & Processing
+          Document Upload
         </h1>
         <p className="text-gray-500 dark:text-gray-400 mt-1">
-          Upload documents for AI-powered extraction and processing
+          Upload your documents for processing
         </p>
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="flex-1 grid grid-cols-1 gap-6">
+        {/* Left Column - Upload and Status */}
         <div className="lg:col-span-2 space-y-6">
-{!isLoadingTemplates && (
-<div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-<div className="space-y-2">
-<label htmlFor="template-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-Select Template
-</label>
-<Select
-  id="template-select"
-  value={selectedTemplate}
-  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedTemplate(e.target.value)}
-    options={templates.map((template) => ({
-    value: template.id,
-    label: `${template.name} (${template.type})`,
-    }))}
-  placeholder="Select a template"
-  className="w-full"
-/>
-<p className="text-xs text-gray-500 dark:text-gray-400">
-Choose a template to define how the document should be processed
-</p>
-</div>
-</div>
-)}
-          <FileUploader 
-            onFilesAdded={handleFilesAdded} 
-            isProcessing={isProcessing} 
-          />
+          {/* Upload Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <Upload className="h-5 w-5 text-blue-600" />
+              <h2 className="text-lg font-medium">Upload Documents</h2>
+            </div>
+            <FileUploader 
+              onFilesAdded={handleFilesAdded} 
+              isProcessing={isProcessing} 
+            />
+          </div>
           
+          {/* Status Section */}
           {uploadedFiles.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium">Uploaded Documents</h3>
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+              <div className="flex items-center space-x-3 mb-4">
+                <Clock className="h-5 w-5 text-yellow-600" />
+                <h2 className="text-lg font-medium">Document Status</h2>
+              </div>
               <div className="space-y-2">
                 {uploadedFiles.map((file, index) => {
                   const job = processingJobs[file.name];
+                  const isCompleted = job?.status === 'completed';
+                  const isError = job?.status === 'error';
+                  
                   return (
                     <div 
                       key={index} 
-                      className="p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer"
+                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                        selectedDocument?.file_name === file.name 
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
                       onClick={() => job && setSelectedDocument(job)}
                     >
                       <div className="flex justify-between items-center">
-                        <span className="font-medium truncate">{file.name}</span>
+                        <div className="flex items-center space-x-2">
+                          {isCompleted ? (
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                          ) : isError ? (
+                            <AlertCircle className="h-5 w-5 text-red-500" />
+                          ) : (
+                            <Clock className="h-5 w-5 text-yellow-500" />
+                          )}
+                          <span className="font-medium truncate">{file.name}</span>
+                        </div>
                         <span className={`text-sm px-2 py-1 rounded-full ${
                           !job ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
-                          job.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                          isCompleted ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                          isError ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
                           'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
                         }`}>
                           {!job ? 'Pending' : job.status}
                         </span>
                       </div>
                       {job?.updated_at && (
-                        <div className="text-xs text-gray-500 mt-1">
-                          Last updated: {new Date(job.updated_at).toLocaleString()}
+                        <div className="text-xs text-gray-500 mt-1 ml-7">
+                          {isCompleted ? 'Completed: ' : 'Last updated: '} 
+                          {new Date(job.updated_at).toLocaleString()}
+                        </div>
+                      )}
+                      {isError && job.error && (
+                        <div className="text-xs text-red-500 mt-1 ml-7 truncate">
+                          Error: {job.error}
                         </div>
                       )}
                     </div>
@@ -189,36 +165,35 @@ Choose a template to define how the document should be processed
           )}
         </div>
 
+        {/* Right Column - Extracted Data */}
         <div className="lg:col-span-1">
-          {selectedDocument ? (
-            <ExtractedDataPanel document={selectedDocument} />
-          ) : (
-            <div className="p-6 border rounded-lg bg-gray-50 dark:bg-gray-800 text-center">
-              <p className="text-gray-500 dark:text-gray-400">
-                Select a document to view extracted data
-              </p>
+          <div className="sticky top-6">
+            <div className="flex items-center space-x-3 mb-4">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <h2 className="text-lg font-medium">Extracted Data</h2>
             </div>
-          )}
+            
+            {selectedDocument ? (
+              <div className="space-y-4">
+                <ExtractedDataPanel document={selectedDocument} />
+                {selectedDocument.status === 'completed' && (
+                  <Button 
+                    className="w-full mt-4"
+                    onClick={handleProceedToProcessing}
+                  >
+                    Process Document
+                  </Button>
+                )}
+              </div>
+            ) : (
+              <div className="p-6 border-2 border-dashed rounded-lg bg-gray-50 dark:bg-gray-800 text-center">
+                <p className="text-gray-500 dark:text-gray-400">
+                  Select a document to view extracted data
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-
-      <div className="mt-8 flex justify-between">
-        <Button
-          variant="outline"
-          onClick={prevStep}
-          disabled={currentStep === 1}
-          leftIcon={<ChevronLeft size={16} />}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="default"
-          onClick={nextStep}
-          rightIcon={<ChevronRight size={16} />}
-          disabled={!selectedDocument || selectedDocument.status !== 'completed'}
-        >
-          Next
-        </Button>
       </div>
     </div>
   );

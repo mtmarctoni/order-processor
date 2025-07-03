@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { AlertCircle, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
-import { Button } from '../ui/Button';
 import { calculateConfidenceColor } from '../../lib/utils';
 import { DocumentStatus } from '../../services/documentService';
 
@@ -23,12 +22,16 @@ interface ExtractedDataPanelProps {
 }
 
 const ExtractedDataPanel: React.FC<ExtractedDataPanelProps> = ({ document }) => {
-  const [groups, setGroups] = useState<FieldGroup[]>(() => {
-    if (!document.result) return [];
-    
-    // Convert the document result into field groups
+  const [groups, setGroups] = useState<FieldGroup[]>([]);
+
+  useEffect(() => {
+    if (!document?.result) {
+      setGroups([]);
+      return;
+    }
+  
     const result = document.result;
-    return [
+    const newGroups = [
       {
         id: 'document_info',
         name: 'Document Information',
@@ -48,19 +51,21 @@ const ExtractedDataPanel: React.FC<ExtractedDataPanelProps> = ({ document }) => 
           id: key,
           label: key.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
           value: value?.toString() || 'N/A',
-          confidence: 1, // Default confidence if not provided
+          confidence: 1,
         })),
       },
     ];
-  });
+    
+    setGroups(newGroups);
+  }, [document]);
 
-  const toggleGroup = (groupId: string) => {
+  const toggleGroup = useCallback((groupId: string) => {
     setGroups(groups.map(group => 
       group.id === groupId 
         ? { ...group, expanded: !group.expanded } 
         : group
     ));
-  };
+  }, [groups]);
 
   if (!document) {
     return (
@@ -171,15 +176,6 @@ const ExtractedDataPanel: React.FC<ExtractedDataPanelProps> = ({ document }) => 
             </div>
           ))
         )}
-      </div>
-      
-      <div className="p-4 border-t flex justify-end space-x-2">
-        <Button variant="outline" size="sm">
-          Export Data
-        </Button>
-        <Button variant="default" size="sm">
-          Save Changes
-        </Button>
       </div>
     </Card>
   );

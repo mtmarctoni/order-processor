@@ -1,8 +1,8 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import DocumentUpload from './pages/DocumentUpload';
+import ProcessingPage from './pages/ProcessingPage';
 import TemplateDesigner from './pages/TemplateDesigner';
 import TemplateUpload from './pages/TemplateUpload';
 import Settings from './pages/Settings';
@@ -17,6 +17,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Dashboard />} />
           <Route path="/upload" element={<DocumentUpload />} />
+          <Route path="/process" element={<ProcessingPage />} />
           <Route path="/templates" element={<TemplateDesigner />} />
           <Route path="/templates/upload" element={<TemplateUpload />} />
           <Route path="/queue" element={<ProcessingQueue />} />

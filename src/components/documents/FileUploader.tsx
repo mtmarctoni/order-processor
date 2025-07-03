@@ -123,7 +123,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({
               variant="outline"
               size="sm"
               disabled={isProcessing}
-              onClick={(e) => e.stopPropagation()}
+              // onClick={(e) => e.stopPropagation()}
             >
               Select Files
             </Button>

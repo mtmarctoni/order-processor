@@ -39,14 +39,14 @@ export const processFileWithAIandTemplate = async (
 
 export const processFile = async (file: Express.Multer.File): Promise<ProcessingJob> => {
   try {
-    const { data: job, error: createError } = await processingService.createJob({
+    const jobData = await processingService.createJob({
       status: 'processing',
       file_name: file.originalname,
       file_type: file.mimetype
     });
 
-    if (createError || !job) {
-      throw createError || new Error('Failed to create job');
+    if (!jobData) {
+      throw new Error('Failed to create job');
     }
 
     const fileWithBuffer: FileWithBuffer = {
@@ -55,10 +55,10 @@ export const processFile = async (file: Express.Multer.File): Promise<Processing
     };
 
     const result = await extractDataFromFile(fileWithBuffer);
-    const { error: updateError } = await processingService.updateJobStatus(job.id, 'completed', result);
+    const job = await processingService.updateJobStatus(jobData.id, 'completed', result);
     
-    if (updateError) {
-      throw updateError;
+    if (!job) {
+      throw new Error('Failed to update job');
     }
 
     return job;

@@ -26,9 +26,9 @@ export const documentService = {
 };
 
 export type DocumentStatus = {
-  error: string;
+  error?: string;
   id: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'error';
   file_name: string;
   file_type: string;
   result?: any;
