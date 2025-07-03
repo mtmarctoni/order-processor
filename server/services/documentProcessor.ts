@@ -1,11 +1,11 @@
-import { FileWithBuffer, ProcessingJob, Template, ProcessedDocument } from '../types/document.types';
+import { FileWithBuffer, ProcessingJob, Template, ProcessedDocument } from '../types/document.types.js';
 import { processingService } from '../lib/supabase.js';
 import ExcelJS from 'exceljs';
 import fs from 'fs/promises';
 import path from 'path';
 // @ts-ignore
-// import pdf from 'pdf-parse';
-import pdf from 'pdf-parse/lib/pdf-parse.js';
+import pdf from '../utils/pdfParseLoader.cjs';
+// import pdf from 'pdf-parse/lib/pdf-parse.js';
 
 export const processFileWithAIandTemplate = async (
   jobId: string, 
